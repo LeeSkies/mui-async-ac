@@ -1,4 +1,4 @@
-import { Autocomplete, TextField, AutocompleteProps, CircularProgress, TextFieldProps, AutocompleteChangeReason, AutocompleteChangeDetails } from '@mui/material';
+import { Autocomplete, TextField, AutocompleteProps, CircularProgress, TextFieldProps, AutocompleteChangeReason, AutocompleteChangeDetails, AutocompleteValue } from '@mui/material';
 import { 
   useQuery, 
   useInfiniteQuery, 
@@ -40,6 +40,8 @@ interface QueryParams {
   [key: string]: string | number;
 };
 
+type AsyncAutocompleteValue<T> = AutocompleteValue<T, boolean, false, false> | string | string[]
+
 interface PageParam extends QueryParams {}
 
 // Props specific to our component
@@ -47,6 +49,7 @@ interface AsyncAutocompleteBaseProps<T extends object> {
   valueField: PathOrFunction<T, any>;
   labelField: PathOrFunction<T, string>;
   optionsPath?: PathOrFunction<any, T[]>;
+  value: AsyncAutocompleteValue<T>;
   onChange?: (
     value: ReturnType<typeof getValueFromPath<T, any>> | ReturnType<typeof getValueFromPath<T, any>>[],
     option: T | T[]
@@ -78,7 +81,7 @@ interface AsyncAutocompleteInfiniteProps<T extends object> extends AsyncAutocomp
 type AsyncAutocompleteProps<T extends object> = (
   | AsyncAutocompleteRegularProps<T>
   | AsyncAutocompleteInfiniteProps<T>
-) & Omit<AutocompleteProps<T, boolean, false, false>, 'options' | 'renderInput' | 'onChange'>;
+) & Omit<AutocompleteProps<T, boolean, false, false>, 'options' | 'renderInput' | 'onChange' | 'value'>;
 
 // Helper function to build URL with query parameters
 const buildUrl = (baseUrl: string, params: QueryParams = {}, searchTerm?: string, searchable?: boolean) => {
@@ -105,6 +108,7 @@ export function AsyncAutocomplete<T extends object>({
   labelField,
   optionsPath,
   onChange,
+  value,
   getNextPageParam,
   initialPageParam,
   queryProps,
@@ -199,6 +203,22 @@ export function AsyncAutocomplete<T extends object>({
     }
   };
 
+  const findOptionByValue = React.useCallback((val: AsyncAutocompleteValue<T>): T | T[] | null => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+      return options.find(option => String(getValueFromPath(option, valueField)) === val) ?? null;
+    }
+    if (Array.isArray(val)) {
+      if (typeof val[0] === 'string') {
+        return options.filter(option => 
+          (val as string[]).includes(String(getValueFromPath(option, valueField)))
+        );
+      }
+      return val as T[];
+    }
+    return val;
+  }, [options, valueField]);
+
   // Handle infinite scroll
   const handleScroll = (event: React.UIEvent<HTMLUListElement>) => {
     const list = event.currentTarget;
@@ -228,6 +248,17 @@ export function AsyncAutocomplete<T extends object>({
       getOptionKey={(option) => getValueFromPath(option, valueField)}
       onChange={handleChange}
       onFocus={handleFocus}
+      value={findOptionByValue(value)}
+      isOptionEqualToValue={option => {
+        console.log(option, value, getValueFromPath(option, valueField))
+        if (!value) return false
+        if (typeof value === "string") return String(getValueFromPath(option, valueField)) === value;
+        if (!Array.isArray(value)) return getValueFromPath(option, valueField) === getValueFromPath(value, valueField);
+        return value.some(v => {
+          if (typeof v === "string") return getValueFromPath(option, valueField) === v;
+          return getValueFromPath(option, valueField) === getValueFromPath(v, valueField);
+        })
+      }}
       ListboxProps={{
         onScroll: handleScroll,
         ...ListboxProps

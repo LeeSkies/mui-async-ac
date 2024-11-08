@@ -47,10 +47,9 @@ function App() {
 
   return (
     <div style={{ padding: 20, backgroundColor: "lightblue" }}>
-      <AsyncAutocomplete<User> url={"https://jsonplaceholder.org/users/"} infinite initialPageParam={{ page: 1 }} getNextPageParam={(...args) => {
-        console.log(args)
+      <AsyncAutocomplete<User> url={"https://jsonplaceholder.org/users/"} infinite initialPageParam={{ page: 1 }} value={"4"} getNextPageParam={(...args) => {
         return null
-      }} labelField={"firstname"} valueField={"id"} onChange={(...args) => console.log(args)} />
+      }} labelField={"firstname"} valueField={"id"} />
     </div>
   )
 }
