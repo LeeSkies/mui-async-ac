@@ -40,7 +40,7 @@ interface QueryParams {
   [key: string]: string | number;
 };
 
-type AsyncAutocompleteValue<T> = AutocompleteValue<T, boolean, false, false> | string | string[]
+type AsyncAutocompleteValue<T> = AutocompleteValue<T, boolean, false, false> | string | string[] | number | number[] | null | undefined;
 
 interface PageParam extends QueryParams {}
 
@@ -49,7 +49,7 @@ interface AsyncAutocompleteBaseProps<T extends object> {
   valueField: PathOrFunction<T, any>;
   labelField: PathOrFunction<T, string>;
   optionsPath?: PathOrFunction<any, T[]>;
-  value: AsyncAutocompleteValue<T>;
+  value?: AsyncAutocompleteValue<T>;
   onChange?: (
     value: ReturnType<typeof getValueFromPath<T, any>> | ReturnType<typeof getValueFromPath<T, any>>[],
     option: T | T[]
@@ -205,13 +205,18 @@ export function AsyncAutocomplete<T extends object>({
 
   const findOptionByValue = React.useCallback((val: AsyncAutocompleteValue<T>): T | T[] | null => {
     if (!val) return null;
-    if (typeof val === 'string') {
-      return options.find(option => String(getValueFromPath(option, valueField)) === val) ?? null;
+    if (typeof val === 'string' || typeof val === 'number') {
+      return options.find(option => String(getValueFromPath(option, valueField)) === val.toString()) ?? null;
     }
     if (Array.isArray(val)) {
       if (typeof val[0] === 'string') {
         return options.filter(option => 
           (val as string[]).includes(String(getValueFromPath(option, valueField)))
+        );
+      }
+      if (typeof val[0] === 'number') {
+        return options.filter(option => 
+          (val as number[]).includes(getValueFromPath(option, valueField))
         );
       }
       return val as T[];
@@ -250,12 +255,12 @@ export function AsyncAutocomplete<T extends object>({
       onFocus={handleFocus}
       value={findOptionByValue(value)}
       isOptionEqualToValue={option => {
-        console.log(option, value, getValueFromPath(option, valueField))
         if (!value) return false
+        if (typeof value === "number") value = value.toString();
         if (typeof value === "string") return String(getValueFromPath(option, valueField)) === value;
         if (!Array.isArray(value)) return getValueFromPath(option, valueField) === getValueFromPath(value, valueField);
         return value.some(v => {
-          if (typeof v === "string") return getValueFromPath(option, valueField) === v;
+          if (typeof v === "string" || typeof v === "number") return String(getValueFromPath(option, valueField)) === v.toString();
           return getValueFromPath(option, valueField) === getValueFromPath(v, valueField);
         })
       }}
