@@ -203,7 +203,8 @@ export function AsyncAutocomplete<T extends object>({
     }
   };
 
-  const findOptionByValue = React.useCallback((val: AsyncAutocompleteValue<T>): T | T[] | null => {
+  const findOptionByValue = React.useCallback((val: AsyncAutocompleteValue<T>): T | T[] | null | undefined => {
+    if (val === undefined) return;
     if (!val) return null;
     if (typeof val === 'string' || typeof val === 'number') {
       return options.find(option => String(getValueFromPath(option, valueField)) === val.toString()) ?? null;
